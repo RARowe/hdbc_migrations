@@ -2,7 +2,6 @@ module Lib
     ( runMigrations
     , updateDatabaseSql
     , databaseNeedsUpdating
-    , migrationsToRun
     ) where
 import DataSource
 import Models
@@ -55,10 +54,8 @@ databaseMigrationVersionSql :: String
 databaseMigrationVersionSql = "select Version from MigrationVersion limit 1;";
 
 updateDatabaseSql :: MigrationConfig -> String
-updateDatabaseSql config = L.intercalate ";" $ map upSql $ migrationsToRun config
+updateDatabaseSql config = L.intercalate ";" $ map upSql $ migrationsToRun
+  where migrationsToRun = drop (databaseVersion config) (migrations config)
 
 databaseNeedsUpdating :: MigrationConfig -> Bool
 databaseNeedsUpdating config = desiredVersion config > databaseVersion config
-
-migrationsToRun :: MigrationConfig -> [Migration]
-migrationsToRun mc = drop (databaseVersion mc) (migrations mc)
