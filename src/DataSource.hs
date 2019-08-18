@@ -2,8 +2,6 @@ module DataSource
     ( retrieveSingleInt
     , retrieveSingleBool
     , executeAndCommitSql
-    , getAndMap
-    , get
     ) where
 import Data.List as L (find)
 import Data.Maybe (Maybe)
@@ -25,18 +23,3 @@ retrieveSingleValue conn sql = fmap firstValue $ quickQuery conn sql []
           | vs == [] = Nothing
           | head vs == [] = Nothing
           | otherwise = Just $ (head . head) vs
-
-getAndMap :: IConnection conn => conn -> String -> [SqlValue] -> ((String -> Maybe SqlValue) -> a) -> IO [a]
-getAndMap conn sql params mapper = do
-  rows <- get conn sql params
-  return $ [mapper $ makeColumnFinder row | row <- rows]
-
-get :: (IConnection conn) => conn -> String -> [SqlValue] -> IO [[(String, SqlValue)]]
-get conn sql params = do
-  statement <- prepare conn sql
-  execute statement params
-  fetchAllRowsAL statement
-
-makeColumnFinder :: [(String, SqlValue)] -> (String -> Maybe SqlValue)
-makeColumnFinder row = \searchText -> fmap snd $ L.find (columnPredicate searchText) row
-  where columnPredicate columnName column = (fst column) == columnName
