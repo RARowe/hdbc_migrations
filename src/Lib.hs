@@ -1,10 +1,12 @@
 module Lib
     ( runMigrations
+    , updateDatabaseSql
+    , databaseNeedsUpdating
     ) where
 import DataSource
 import Models
-import Data.List as L (intercalate)
-import Data.Maybe as M (fromMaybe)
+import qualified Data.List as L (intercalate)
+import qualified Data.Maybe as M (fromMaybe)
 import Database.HDBC
 
 runMigrations :: IConnection conn => conn -> [Migration] -> IO () 
@@ -29,11 +31,15 @@ runMigrationsWithConfig conn config
   | databaseNeedsUpdating config = executeAndCommitSql conn $ updateDatabaseSql config
   | otherwise = return ()
 
+-- Migrations if database is net new
+
 createMigrationVersionTable :: Migration
 createMigrationVersionTable = Migration { upSql = createMigrationVersionTableSql, downSql = "" }
 
 createMigrationVersionEntry :: Migration
 createMigrationVersionEntry = Migration { upSql = createMigrationVersionEntrySql, downSql = "" }
+
+-- SQL 
 
 createMigrationVersionTableSql :: String
 createMigrationVersionTableSql = "create table MigrationVersion (Version int not null);";
@@ -48,10 +54,8 @@ databaseMigrationVersionSql :: String
 databaseMigrationVersionSql = "select Version from MigrationVersion limit 1;";
 
 updateDatabaseSql :: MigrationConfig -> String
-updateDatabaseSql config = L.intercalate ";" $ map upSql $ migrationsToRun config
+updateDatabaseSql config = L.intercalate ";" $ map upSql $ migrationsToRun
+  where migrationsToRun = drop (databaseVersion config) (migrations config)
 
 databaseNeedsUpdating :: MigrationConfig -> Bool
 databaseNeedsUpdating config = desiredVersion config > databaseVersion config
-
-migrationsToRun :: MigrationConfig -> [Migration]
-migrationsToRun mc = drop (databaseVersion mc) (migrations mc)
