@@ -1,24 +1,35 @@
 module DataSource
-    ( retrieveSingleInt
+    ( SqlPair
+    , retrieveSingleInt
     , retrieveSingleBool
-    , executeAndCommitSql
+    , runBatchAndCommit
     ) where
-import Data.List as L (find)
+import qualified Control.Monad as C (mapM_)
 import Data.Maybe (Maybe)
-import Database.HDBC
-import Database.HDBC.Sqlite3
+import qualified Database.HDBC as DB
 
-executeAndCommitSql :: IConnection conn => conn -> String -> IO ()
-executeAndCommitSql conn sql = runRaw conn sql >> commit conn
+type SqlPair = (String, [DB.SqlValue])
 
-retrieveSingleInt :: IConnection conn => conn -> String -> IO (Maybe Int)
-retrieveSingleInt conn sql = retrieveSingleValue conn sql >>= \i -> return $ fmap fromSql i
+runBatchAndCommit :: DB.IConnection conn => conn -> [SqlPair] -> IO ()
+runBatchAndCommit conn sqlPairs = runBatch conn sqlPairs >> DB.commit conn
 
-retrieveSingleBool :: IConnection conn => conn -> String -> IO (Maybe Bool)
-retrieveSingleBool conn sql = retrieveSingleValue conn sql >>= \b -> return $ fmap fromSql b
+runBatch :: DB.IConnection conn => conn -> [SqlPair] -> IO ()
+runBatch conn sqlPairs = C.mapM_ (run conn) sqlPairs
 
-retrieveSingleValue :: IConnection conn => conn -> String -> IO (Maybe SqlValue)
-retrieveSingleValue conn sql = fmap firstValue $ quickQuery conn sql []
+run :: DB.IConnection conn => conn -> SqlPair -> IO Integer
+run conn (sql, sqlParams) = DB.run conn sql sqlParams
+
+executeAndCommitSql :: DB.IConnection conn => conn -> String -> IO ()
+executeAndCommitSql conn sql = DB.runRaw conn sql >> DB.commit conn
+
+retrieveSingleInt :: DB.IConnection conn => conn -> String -> IO (Maybe Int)
+retrieveSingleInt conn sql = retrieveSingleValue conn sql >>= \i -> return $ fmap DB.fromSql i
+
+retrieveSingleBool :: DB.IConnection conn => conn -> String -> IO (Maybe Bool)
+retrieveSingleBool conn sql = retrieveSingleValue conn sql >>= \b -> return $ fmap DB.fromSql b
+
+retrieveSingleValue :: DB.IConnection conn => conn -> String -> IO (Maybe DB.SqlValue)
+retrieveSingleValue conn sql = fmap firstValue $ DB.quickQuery conn sql []
   where firstValue vs
           | vs == [] = Nothing
           | head vs == [] = Nothing
