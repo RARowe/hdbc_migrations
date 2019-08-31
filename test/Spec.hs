@@ -1,5 +1,4 @@
 import qualified Data.Either as E
-import Lib (databaseNeedsUpdating, updateDatabaseSql)
 import Models
 
 main :: IO ()
@@ -30,7 +29,7 @@ runTests = do
   putStrLn $ (show $ length successes) ++ " out of " ++ (show $ length tests) ++ " passed."
 
 tests :: [Either String Bool]
-tests = [databaseNeedsUpdatingTest, databaseNeedsUpdatingTest2, updateDatabaseSqlTest]
+tests = [databaseNeedsUpdatingTest, databaseNeedsUpdatingTest2]
 
 databaseNeedsUpdatingTest :: Either String Bool
 databaseNeedsUpdatingTest
@@ -41,11 +40,3 @@ databaseNeedsUpdatingTest2 :: Either String Bool
 databaseNeedsUpdatingTest2
   | databaseNeedsUpdating testMigrationConfig{ databaseVersion = 234 } == False = Right True
   | otherwise = Left "databaseNeedsUpdating: Should return 'False' when database version is ahead of desired version"
-
-testMigrationSql :: String
-testMigrationSql = "insert into Users values ('Andrew');;create table Pets (Name string not null);"
-
-updateDatabaseSqlTest :: Either String Bool
-updateDatabaseSqlTest
-  | updateDatabaseSql testMigrationConfig == testMigrationSql = Right True
-  | otherwise = Left "updateDatabaseSql: Does not match the expected Sql output"
